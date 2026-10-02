@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Dashboard de horómetros de montacargas por ciudad, alimentado desde Google Sheets.">
+<title>Dashboard Horómetros Montacargas</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root{
+  --bg:#eef3ff;
+  --panel:#ffffff;
+  --ink:#0f172a;
+  --muted:#64748b;
+  --line:#dbe4f0;
+  --sidebar:#08111f;
+  --sidebar2:#111c31;
+  --sidebar3:#18243a;
+  --primary:#2563eb;
+  --primary2:#7c3aed;
+  --cyan:#06b6d4;
+  --green:#10b981;
+  --orange:#f97316;
+  --red:#ef4444;
+  --yellow:#facc15;
+  --pink:#ec4899;
+  --violet:#8b5cf6;
+  --teal:#14b8a6;
+  --blue:#3b82f6;
+  --good:#047857;
+  --warn:#b45309;
+  --bad:#b91c1c;
+  --soft-good:#d1fae5;
+  --soft-warn:#fef3c7;
+  --soft-bad:#fee2e2;
+  --soft-blue:#dbeafe;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",Arial,sans-serif;background:linear-gradient(135deg,#eef3ff 0%,#f8fafc 55%,#eff6ff 100%);color:var(--ink)}
+aside{position:fixed;left:0;top:0;width:340px;height:100vh;background:linear-gradient(180deg,#08111f 0%,#0f172a 100%);color:#fff;padding:16px;overflow:auto;z-index:10;box-shadow:8px 0 28px rgba(15,23,42,.22)}
+aside h2{margin:0 0 3px;font-size:21px;letter-spacing:-.02em}
+aside p{margin:0 0 10px;color:#cbd5e1;font-size:12px;line-height:1.4}
+label{display:block;margin-top:10px;font-size:12px;color:#cbd5e1;font-weight:800;letter-spacing:.02em}
+input,select,textarea,button{font-family:inherit}
+input[type="file"],input[type="date"],input[type="number"],input[type="search"],select,textarea{width:100%;border:1px solid #334155;border-radius:12px;padding:8px 10px;background:var(--sidebar2);color:#fff;outline:none;margin-top:6px}
+input[type="file"]::file-selector-button{border:0;border-radius:8px;padding:6px 9px;background:#2563eb;color:#fff;font-weight:800;margin-right:8px;cursor:pointer}
+textarea{min-height:92px;resize:vertical;font-size:12px;line-height:1.35}
+input[type="checkbox"]{accent-color:#22c55e}
+button{border:0;border-radius:11px;padding:8px 11px;cursor:pointer;font-weight:900;background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;box-shadow:0 6px 16px rgba(37,99,235,.25)}
+button:hover{filter:brightness(1.06);transform:translateY(-1px)}
+button.secondary{background:linear-gradient(135deg,#0ea5e9,#14b8a6)}
+button.ghost{background:transparent;border:1px solid #3b4a61;color:#e2e8f0;box-shadow:none}
+button.danger{background:linear-gradient(135deg,#ef4444,#b91c1c)}
+button.small{font-size:11px;padding:6px 9px;border-radius:10px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.status-line{font-size:12px;color:#cbd5e1;margin-top:10px;line-height:1.4}.status-line strong{color:#fff}.error{color:#fecaca;background:#7f1d1d;border-radius:12px;padding:9px;margin-top:10px;font-size:12px;display:none}.notice{color:#dbeafe;background:rgba(30,64,175,.45);border:1px solid rgba(96,165,250,.35);border-radius:14px;padding:10px;margin-top:12px;font-size:12px;line-height:1.45}.notice strong{color:#fff}
+.filter-box{border:1px solid #334155;background:#0b1220;border-radius:14px;padding:8px;margin-top:5px}.filter-tools{display:flex;gap:6px;margin:6px 0;align-items:center}.count-pill{margin-left:auto;font-size:11px;color:#cbd5e1;background:#1e293b;border:1px solid #334155;border-radius:999px;padding:5px 8px}.checklist{max-height:190px;overflow:auto;padding-right:4px}.checkitem{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;font-size:12px;color:#e5e7eb}.checkitem:hover{background:#1f2937}.checkitem small{margin-left:auto;color:#94a3b8}.color-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:0 0 auto}.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}
+main{margin-left:340px;padding:16px 18px 20px}.header{display:block;margin-bottom:10px}.header h1{margin:0;font-size:27px;letter-spacing:-.04em;line-height:1.1}.header .sub{color:var(--muted);font-size:12px;margin-top:3px;line-height:1.4;max-width:1100px}.hero-note{background:#fff;border:1px solid var(--line);border-left:5px solid #7c3aed;border-radius:15px;padding:10px 12px;margin:10px 0;color:#334155;font-size:12px;line-height:1.45;box-shadow:0 10px 24px rgba(15,23,42,.055)}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(170px,1fr));gap:10px}.card{background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:16px;padding:12px 13px;box-shadow:0 12px 30px rgba(15,23,42,.07);position:relative;overflow:hidden}.card:before{content:"";position:absolute;right:-26px;top:-28px;width:82px;height:82px;border-radius:50%;background:linear-gradient(135deg,rgba(59,130,246,.18),rgba(236,72,153,.16))}.kpi-title{font-size:11px;color:var(--muted);font-weight:900;text-transform:uppercase;letter-spacing:.06em}.kpi-value{font-size:27px;font-weight:900;margin-top:5px;line-height:1.05;position:relative}.kpi-help{font-size:11px;color:var(--muted);margin-top:5px;min-height:16px}.kpi-good{color:var(--good)}.kpi-warn{color:var(--warn)}.kpi-bad{color:var(--bad)}
+.charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}.chartbox{height:405px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px;position:relative;box-shadow:0 12px 30px rgba(15,23,42,.07)}canvas{width:100%!important;height:100%!important;max-height:355px}.wide{grid-column:1/-1;height:430px}.box{background:#fff;border:1px solid var(--line);margin-top:10px;padding:12px 13px;border-radius:16px;box-shadow:0 12px 30px rgba(15,23,42,.07)}.box-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:7px}.box h3{margin:0;font-size:18px}.box .hint{color:var(--muted);font-size:12px;margin-top:4px;line-height:1.4}.table-wrap{overflow:auto;max-height:560px;border:1px solid var(--line);border-radius:14px}table{width:100%;border-collapse:separate;border-spacing:0;min-width:960px}th,td{border-bottom:1px solid var(--line);padding:8px 9px;font-size:12px;text-align:left;white-space:nowrap}th{background:linear-gradient(135deg,#dbeafe,#ede9fe);color:#1e1b4b;position:sticky;top:0;z-index:2;font-size:11px;text-transform:uppercase;letter-spacing:.04em}tr:hover td{background:#f8fafc}td.num{text-align:right;font-variant-numeric:tabular-nums}.badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:900}.badge.good{background:var(--soft-good);color:var(--good)}.badge.warn{background:var(--soft-warn);color:var(--warn)}.badge.bad{background:var(--soft-bad);color:var(--bad)}.badge.info{background:var(--soft-blue);color:#1d4ed8}.badge.mix{background:#fce7f3;color:#be185d}.tabs{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 0}.tab{background:#fff;color:var(--ink);border:1px solid var(--line);box-shadow:0 4px 10px rgba(15,23,42,.04)}.tab.active{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border-color:transparent}.tab-panel{display:none}.tab-panel.active{display:block}.empty{padding:32px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:18px;background:#fff}.mini-bars{display:flex;gap:5px;align-items:center;min-width:150px}.bar{height:9px;border-radius:999px}.bar-plan{background:#8b5cf6}.bar-real{background:#10b981}.diff-pos{color:#047857;font-weight:900}.diff-neg{color:#b91c1c;font-weight:900}.diff-neutral{color:#64748b;font-weight:900}.heatmap{min-width:760px}.heatmap td{text-align:center;font-variant-numeric:tabular-nums}.heat-zero{background:#f8fafc!important;color:#94a3b8}.heat-low{background:#dbeafe!important;color:#1e40af}.heat-mid{background:#d1fae5!important;color:#065f46}.heat-high{background:#fef3c7!important;color:#92400e}.heat-alert{background:#fee2e2!important;color:#991b1b;font-weight:900}.footer-note{font-size:12px;color:var(--muted);line-height:1.45;margin-top:10px}
+.city-hours-strip{display:grid;grid-template-columns:repeat(3,minmax(190px,1fr));gap:10px;margin:0 0 10px}.city-hours-card{background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;border:1px solid #334155;border-radius:16px;padding:12px 14px;box-shadow:0 12px 30px rgba(15,23,42,.12);position:relative;overflow:hidden}.city-hours-card:after{content:"";position:absolute;right:-24px;top:-30px;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.08)}.city-hours-title{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.07em;color:#cbd5e1}.city-hours-value{font-size:29px;font-weight:900;line-height:1.05;margin-top:5px;position:relative}.city-hours-help{font-size:11px;color:#cbd5e1;margin-top:5px;line-height:1.35;position:relative}.city-hours-caption{grid-column:1/-1;font-size:12px;color:var(--muted);margin:-2px 2px 0;line-height:1.4}
+@media(max-width:1320px){.grid{grid-template-columns:repeat(2,minmax(170px,1fr))}.charts{grid-template-columns:1fr}.wide{grid-column:auto}.city-hours-strip{grid-template-columns:repeat(3,minmax(150px,1fr))}}
+@media(max-width:920px){aside{position:relative;width:100%;height:auto}main{margin-left:0;padding:12px 10px 16px}.grid{grid-template-columns:1fr}.header{display:block}.city-hours-strip{grid-template-columns:1fr}}
+
+.config-details{margin-top:10px;overflow:hidden}
+.config-details summary{cursor:pointer;font-weight:900;font-size:18px;color:#0f172a;list-style:none;display:flex;align-items:center;gap:8px}
+.config-details summary::-webkit-details-marker{display:none}
+.config-details summary:before{content:"⚙️";font-size:18px}
+.config-grid{display:grid;grid-template-columns:1fr 1.15fr;gap:10px;margin-top:10px}
+.config-subbox{border:1px solid var(--line);border-radius:16px;padding:10px;background:#f8fafc}
+.config-subbox h3{margin:0 0 4px;font-size:16px}
+.config-table{min-width:560px}
+.config-table input,.config-table textarea{background:#fff;color:#0f172a;border:1px solid #cbd5e1;border-radius:10px;margin:0;padding:6px 8px;min-height:auto}
+.config-table textarea{min-height:38px;resize:vertical;width:100%}
+.config-add{display:grid;grid-template-columns:1.3fr .7fr auto;gap:8px;margin-top:10px;align-items:end}
+.config-add input{background:#fff;color:#0f172a;border:1px solid #cbd5e1;border-radius:10px;margin-top:4px}
+.config-kv{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.config-kv .badge{font-size:10px}
+@media(max-width:1320px){.config-grid{grid-template-columns:1fr}.config-add{grid-template-columns:1fr}}
+
+ .is-hidden{display:none!important}.mode-note{background:#eef2ff;color:#312e81;border:1px solid #c7d2fe;border-radius:14px;padding:10px 12px;font-size:12px;line-height:1.45;margin-top:10px}
+@media print{aside,.actions,.tabs button,.box-head button{display:none!important}main{margin:0;padding:0}.chartbox,.card,.box{box-shadow:none;break-inside:avoid}}
+</style>
+</head>
+
+<body>
+<aside>
+  <h2>Horómetros · Ciudades</h2>
+  <p>El dashboard carga automáticamente la base desde <strong>Google Sheets</strong>. El archivo local queda disponible como respaldo.</p>
+
+  <label>Fuente de datos</label>
+  <div class="actions" style="margin-top:6px">
+    <button id="btnGoogleRefresh" class="secondary" type="button">Actualizar Google Sheets</button>
+    <button id="btnClear" class="ghost" type="button">Limpiar</button>
+  </div>
+  <div id="googleStatus" class="status-line" style="margin-top:7px">Conectando con Google Sheets…</div>
+
+  <label>Archivo Excel / CSV de respaldo</label>
+  <input type="file" id="file" accept=".xlsx,.xls,.csv,.txt">
+
+  <div class="notice">
+    <strong>Regla principal:</strong> Bucaramanga se analiza por áreas. Barrancabermeja y San Gil no usan áreas: allí solo se compara el total de horas reales contra las horas proyectadas por ciudad/equipo.
+  </div>
+
+  <label>Rango de fechas</label>
+  <div class="row"><input type="date" id="d1"><input type="date" id="d2"></div>
+  <div class="quick-grid">
+    <button class="small secondary" id="btnAllDates" type="button">Todo</button>
+    <button class="small secondary" id="btnLastDate" type="button">Última lectura</button>
+    <button class="small ghost" id="btnOnlyActive" type="button">Con movimiento</button>
+    <button class="small ghost" id="btnOnlyAlerts" type="button">Alertas</button>
+  </div>
+
+  <div id="contrastWrap">
+    <label>Día para contraste de mix</label>
+    <select id="contrastDate"><option value="all">Acumulado del filtro</option></select>
+  </div>
+
+  <label>Estado</label>
+  <select id="stateFilter">
+    <option value="all">Todos</option>
+    <option value="active">Solo con movimiento</option>
+    <option value="idle">Sin movimiento</option>
+    <option value="under">Bajo cumplimiento &lt; 80%</option>
+    <option value="over">Sobre objetivo &gt; 120%</option>
+    <option value="alerts">Solo alertas</option>
+  </select>
+
+  <div class="row">
+    <div><label>Umbral detenido h/intervalo</label><input type="number" id="idleThreshold" min="0" step="0.1" value="0"></div>
+    <div><label>Alerta máx. h/día equipo</label><input type="number" id="maxHoursDay" min="1" step="0.5" value="24"></div>
+  </div>
+
+  <label>Ciudades</label>
+  <div class="filter-box" id="cityFilterWrap">
+    <input type="search" id="citySearch" placeholder="Buscar ciudad">
+    <div class="filter-tools"><button class="small secondary" data-list="cities" data-action="all" type="button">Todas</button><button class="small ghost" data-list="cities" data-action="none" type="button">Ninguna</button><span id="cityCount" class="count-pill">0</span></div>
+    <div id="cityList" class="checklist"></div>
+  </div>
+
+  <div id="areaFilterWrap">
+    <label>Áreas</label>
+    <div class="filter-box">
+      <input type="search" id="areaSearch" placeholder="Buscar área">
+      <div class="filter-tools"><button class="small secondary" data-list="areas" data-action="all" type="button">Todas</button><button class="small ghost" data-list="areas" data-action="none" type="button">Ninguna</button><span id="areaCount" class="count-pill">0</span></div>
+      <div id="areaList" class="checklist"></div>
+    </div>
+  </div>
+
+  <label>Equipos</label>
+  <div class="filter-box">
+    <input type="search" id="equipSearch" placeholder="Buscar equipo">
+    <div class="filter-tools"><button class="small secondary" data-list="equipos" data-action="all" type="button">Todos</button><button class="small ghost" data-list="equipos" data-action="none" type="button">Ninguno</button><span id="equipCount" class="count-pill">0</span></div>
+    <div id="equipList" class="checklist"></div>
+  </div>
+
+  <div id="status" class="status-line">Sin archivo cargado.</div>
+  <div id="err" class="error"></div>
+</aside>
+
+<main>
+  <div class="header">
+    <div>
+      <h1>Dashboard de utilización por ciudad</h1>
+      <div class="sub" id="subtitle">Datos de horómetros actualizados desde Google Sheets. Bucaramanga conserva análisis por áreas; Barrancabermeja y San Gil se evalúan por total de horas.</div>
+    </div>
+  </div>
+
+  <div id="empty" class="empty">Conectando con Google Sheets. También puedes cargar un Excel/CSV como respaldo.</div>
+
+  <details id="configDetails" class="box config-details" open>
+    <summary>Configuración editable de áreas y equipos</summary>
+    <div class="hint">Aquí puedes ver y cambiar ciudades, áreas de Bucaramanga y horas proyectadas. Las áreas solo aplican para Bucaramanga; Barrancabermeja y San Gil se proyectan por total diario de ciudad/equipo.</div>
+    <div class="config-kv">
+      <span class="badge info">Bucaramanga: por áreas</span>
+      <span class="badge mix">Barranca y San Gil: sin áreas</span>
+      <span class="badge warn">Equipo máx. 24 h/día</span>
+      <span class="badge good">Área/ciudad puede superar 24 h/día</span>
+    </div>
+    <div class="actions">
+      <button id="btnSaveConfig" type="button">Guardar configuración</button>
+      <button id="btnResetConfig" class="ghost" type="button">Restaurar base</button>
+      <button id="btnExportConfig" class="secondary" type="button">Exportar configuración</button>
+    </div>
+    <div class="config-grid">
+      <div class="config-subbox">
+        <h3>Ciudades sin análisis de áreas</h3>
+        <div class="hint">Barrancabermeja y San Gil se evalúan por total de horas. Edita aquí sus horas proyectadas diarias.</div>
+        <div class="table-wrap"><table class="config-table"><thead><tr><th>Ciudad</th><th>Horas proyectadas/día</th></tr></thead><tbody id="cfgCityTargetBody"></tbody></table></div>
+      </div>
+      <div class="config-subbox">
+        <h3>Ciudad por equipo</h3>
+        <div class="hint">Asigna cada equipo a Bucaramanga, Barrancabermeja o San Gil. Solo Bucaramanga habilita áreas.</div>
+        <div class="table-wrap"><table class="config-table"><thead><tr><th>Equipo</th><th>Ciudad</th><th>Modo</th></tr></thead><tbody id="cfgCityEquipBody"></tbody></table></div>
+      </div>
+      <div class="config-subbox">
+        <h3>Áreas establecidas</h3>
+        <div class="hint">Edita el nombre y las horas proyectadas diarias. Si renombras un área, se actualiza automáticamente en los equipos al guardar.</div>
+        <div class="table-wrap"><table class="config-table"><thead><tr><th>Área</th><th>Horas proyectadas/día</th><th>Acción</th></tr></thead><tbody id="cfgAreaBody"></tbody></table></div>
+        <div class="config-add">
+          <div><label style="color:#64748b;margin-top:0">Nueva área</label><input id="newAreaName" placeholder="Ej: Taller"></div>
+          <div><label style="color:#64748b;margin-top:0">h/día</label><input id="newAreaTarget" type="number" step="0.1" min="0" value="0"></div>
+          <button id="btnAddArea" class="secondary" type="button">Agregar</button>
+        </div>
+      </div>
+      <div class="config-subbox">
+        <h3>Asignación de equipos a áreas</h3>
+        <div class="hint">Ejemplo para Bucaramanga: <strong>P3 = Reprocesos | Cargue | Descargue</strong>. Si el equipo pertenece a Barrancabermeja o San Gil, esta asignación no se usa.</div>
+        <div class="table-wrap"><table class="config-table"><thead><tr><th>Equipo</th><th>Área(s)</th><th>Partes</th></tr></thead><tbody id="cfgEquipBody"></tbody></table></div>
+      </div>
+    </div>
+  </details>
+
+  <section id="dashboard" style="display:none">
+    <div class="city-hours-strip" id="globalCityHours">
+      <div class="city-hours-card"><div class="city-hours-title">Horas trabajadas · Bucaramanga</div><div class="city-hours-value" id="cityHoursBuc">0,0 h</div><div class="city-hours-help" id="cityHoursBucHelp">Último intervalo disponible</div></div>
+      <div class="city-hours-card"><div class="city-hours-title">Horas trabajadas · Barrancabermeja</div><div class="city-hours-value" id="cityHoursBarr">0,0 h</div><div class="city-hours-help" id="cityHoursBarrHelp">Último intervalo disponible</div></div>
+      <div class="city-hours-card"><div class="city-hours-title">Horas trabajadas · San Gil</div><div class="city-hours-value" id="cityHoursSan">0,0 h</div><div class="city-hours-help" id="cityHoursSanHelp">Último intervalo disponible</div></div>
+      <div class="city-hours-caption">Estas tarjetas son globales: siempre usan la última lectura disponible menos la lectura anterior y <strong>no cambian con ningún filtro del dashboard</strong>.</div>
+    </div>
+
+    <div class="hero-note" id="mixExplanation">
+      El contraste principal no cambia los datos originales: usa las horas reales calculadas por horómetro y las reparte por área cuando corresponde. Luego compara el <strong>% proyectado del área</strong> contra el <strong>% real trabajado del área</strong>.
+    </div>
+
+    <div class="grid">
+      <div class="card"><div class="kpi-title">Horas reales</div><div class="kpi-value" id="kHours">0</div><div class="kpi-help">Sin duplicar equipos multiárea</div></div>
+      <div class="card" id="cardTarget"><div class="kpi-title" id="kTargetTitle">Objetivo</div><div class="kpi-value" id="kTarget">0</div><div class="kpi-help" id="kTargetHelp">Área o ciudad según filtro</div></div>
+      <div class="card"><div class="kpi-title">Cumplimiento</div><div class="kpi-value" id="kCompliance">0%</div><div class="kpi-help" id="kComplianceHelp">Real / objetivo</div></div>
+      <div class="card" id="cardMixDev"><div class="kpi-title">Desviación mix prom.</div><div class="kpi-value" id="kMixDev">0 pp</div><div class="kpi-help">Solo Bucaramanga por áreas</div></div>
+      <div class="card"><div class="kpi-title">Equipos activos</div><div class="kpi-value" id="kActive">0</div><div class="kpi-help" id="kActiveHelp">Validado por equipo</div></div>
+      <div class="card"><div class="kpi-title">Equipos detenidos</div><div class="kpi-value" id="kIdle">0</div><div class="kpi-help">Sin incremento en el filtro</div></div>
+      <div class="card" id="cardTopArea"><div class="kpi-title" id="kTopTitle">Top área real</div><div class="kpi-value" id="kTopArea">-</div><div class="kpi-help" id="kTopAreaHelp">Mayor participación real</div></div>
+      <div class="card"><div class="kpi-title">Alertas</div><div class="kpi-value" id="kAlerts">0</div><div class="kpi-help">Equipo >24 h/día, retrocesos, etc.</div></div>
+    </div>
+
+    <div class="charts">
+      <div class="chartbox wide" id="chartMixBox"><canvas id="cMix"></canvas></div>
+      <div class="chartbox" id="chartDailyBox"><canvas id="cDaily"></canvas></div>
+      <div class="chartbox" id="chartAreaBox"><canvas id="cArea"></canvas></div>
+      <div class="chartbox" id="chartEquipBox"><canvas id="cEquip"></canvas></div>
+      <div class="chartbox" id="chartDeviationBox"><canvas id="cDeviation"></canvas></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="tabMix" type="button">Mix proyectado vs real</button>
+      <button class="tab" data-tab="tabEquip" type="button">Resumen por equipo</button>
+      <button class="tab" data-tab="tabAreaEquip" type="button">Equipo por área</button>
+      <button class="tab" data-tab="tabDay" type="button">Resumen por fecha</button>
+      <button class="tab" data-tab="tabDetail" type="button">Detalle intervalos</button>
+      <button class="tab" data-tab="tabAlerts" type="button">Alertas</button>
+      <button class="tab" data-tab="tabHeat" type="button">Mapa de calor</button>
+    </div>
+
+    <div id="tabMix" class="tab-panel active"><div class="box"><div class="box-head"><div><h3>Comparación porcentual por área</h3><div class="hint">Proyección % = objetivo del área / objetivo total del día. Real % = horas reales asignadas al área / horas reales totales del día. La diferencia se expresa en puntos porcentuales.</div></div></div><div class="table-wrap"><table><thead id="thMix"></thead><tbody id="tbMix"></tbody></table></div></div></div>
+    <div id="tabEquip" class="tab-panel"><div class="box"><div class="box-head"><div><h3>Resumen por equipo</h3><div class="hint">La lectura de horómetro se valida una sola vez por equipo, incluso si el equipo se reparte en varias áreas.</div></div></div><div class="table-wrap"><table><thead id="thEquip"></thead><tbody id="tbEquip"></tbody></table></div></div></div>
+    <div id="tabAreaEquip" class="tab-panel"><div class="box"><div class="box-head"><div><h3>Detalle equipo por área</h3><div class="hint">Aquí sí verás las horas repartidas. Si un equipo participa en 2 áreas, cada área recibe 50% del delta del horómetro.</div></div></div><div class="table-wrap"><table><thead id="thAreaEquip"></thead><tbody id="tbAreaEquip"></tbody></table></div></div></div>
+    <div id="tabDay" class="tab-panel"><div class="box"><div class="box-head"><div><h3>Resumen por fecha de lectura</h3><div class="hint">La fecha representa la lectura final del intervalo.</div></div></div><div class="table-wrap"><table><thead id="thDay"></thead><tbody id="tbDay"></tbody></table></div></div></div>
+    <div id="tabDetail" class="tab-panel"><div class="box"><div class="box-head"><div><h3>Detalle de intervalos por equipo</h3><div class="hint">Base de cálculo antes de dividir por áreas. Esta tabla sirve para validar lecturas y deltas reales del horómetro.</div></div></div><div class="table-wrap"><table><thead id="thDetail"></thead><tbody id="tbDetail"></tbody></table></div></div></div>
+    <div id="tabAlerts" class="tab-panel"><div class="box"><div class="box-head"><div><h3>Alertas operativas</h3><div class="hint">Detecta retrocesos de horómetro, equipos sin área, objetivos de equipo mayores a 24 h/día o incrementos imposibles.</div></div></div><div class="table-wrap"><table><thead id="thAlerts"></thead><tbody id="tbAlerts"></tbody></table></div></div></div>
+    <div id="tabHeat" class="tab-panel"><div class="box"><div class="box-head"><div><h3>Mapa de calor h/día por equipo</h3><div class="hint">Este mapa se basa en el equipo completo, no en horas divididas por área.</div></div></div><div class="table-wrap"><table class="heatmap"><thead id="thHeat"></thead><tbody id="tbHeat"></tbody></table></div><div class="footer-note">Leyenda: gris 0 h/día, azul bajo, verde normal, amarillo alto, rojo supera la alerta configurada.</div></div></div>
+  </section>
+</main>
+
+<script>
+/* =====================
+   CONFIGURACIÓN EDITABLE
+   =====================
+   Para indicar que un equipo trabaja en varias áreas, separa las áreas con |.
+   Ejemplo: "P3":"Reprocesos|Cargue|Descargue".
+   El delta del horómetro de ese equipo se divide entre la cantidad de áreas.
+*/
+const DEFAULT_AREA_BY_EQUIPMENT={
+  "79":"Fleteo","80":"Movimiento Internos","81":"Movimiento Internos","82":"Surtido",
+  "83":"Línea 1","84":"Línea 2","85":"Línea brisa","86":"Relevo de carga",
+  "87":"Relevos","88":"Fleteo","C3":"Centro de acopio","C4":"Cuadrilla",
+  "P1":"Línea 3","P3":"Reprocesos|Cargue|Descargue","P5":"Bodega",
+  "P6":"Stand By","P8":"Línea 2","R1":"Almacén"
+};
+
+/* Objetivo diario por área. El área puede superar 24 h/día si agrupa varios equipos.
+   Cargue y Descargue son áreas diferentes. Para P3 se deja el objetivo total anterior
+   de 24 h/día repartido por defecto en 8 + 8 + 8 entre Reprocesos, Cargue y Descargue.
+*/
+const DEFAULT_TARGET_HOURS_BY_AREA={
+  "Fleteo":48,"Movimiento Internos":32,"Surtido":8,"Línea 1":8,
+  "Línea 2":40,"Línea brisa":8,"Relevo de carga":8,"Relevos":8,
+  "Centro de acopio":8,"Cuadrilla":16,"Línea 3":24,
+  "Reprocesos":8,"Cargue":8,"Descargue":8,"Bodega":16,"Stand By":8,"Almacén":8,
+  "Sin clasificar":0
+};
+
+/* Opcional: objetivo manual por equipo. La suma proyectada por equipo se limita a 24 h/día. */
+const DEFAULT_TARGET_HOURS_BY_EQUIPMENT={
+  // "79":24,
+  // "P3":24
+};
+
+const DEFAULT_CITY_BY_EQUIPMENT={
+  "79":"Bucaramanga","80":"Bucaramanga","81":"Bucaramanga","82":"Bucaramanga",
+  "83":"Bucaramanga","84":"Bucaramanga","85":"Bucaramanga","86":"Bucaramanga",
+  "87":"Bucaramanga","88":"Bucaramanga","C3":"Bucaramanga","C4":"Bucaramanga",
+  "P1":"Bucaramanga","P3":"Bucaramanga","P5":"Bucaramanga","P6":"Bucaramanga","P8":"Bucaramanga","R1":"Bucaramanga",
+  "53":"Barrancabermeja","76":"Barrancabermeja","78":"San Gil"
+};
+const DEFAULT_TARGET_HOURS_BY_CITY={
+  "Barrancabermeja":48,
+  "San Gil":24
+};
+const AREA_ENABLED_CITY="Bucaramanga";
+
+const CONFIG_STORAGE_KEY="dashboardHorometrosConfig_v4_4_ciudades";
+let AREA_BY_EQUIPMENT=clonePlain(DEFAULT_AREA_BY_EQUIPMENT);
+let TARGET_HOURS_BY_AREA=clonePlain(DEFAULT_TARGET_HOURS_BY_AREA);
+let TARGET_HOURS_BY_EQUIPMENT=clonePlain(DEFAULT_TARGET_HOURS_BY_EQUIPMENT);
+let CITY_BY_EQUIPMENT=clonePlain(DEFAULT_CITY_BY_EQUIPMENT);
+let TARGET_HOURS_BY_CITY=clonePlain(DEFAULT_TARGET_HOURS_BY_CITY);
+
+function clonePlain(obj){return JSON.parse(JSON.stringify(obj||{}));}
+function loadConfigFromStorage(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(CONFIG_STORAGE_KEY)||"null");
+    if(saved){
+      if(saved.areaByEquipment) AREA_BY_EQUIPMENT=normalizeLegacyConfig(saved.areaByEquipment,"map");
+      if(saved.targetHoursByArea) TARGET_HOURS_BY_AREA=normalizeLegacyConfig(saved.targetHoursByArea,"target");
+      TARGET_HOURS_BY_EQUIPMENT=saved.targetHoursByEquipment||TARGET_HOURS_BY_EQUIPMENT;
+      CITY_BY_EQUIPMENT={...DEFAULT_CITY_BY_EQUIPMENT,...(saved.cityByEquipment||{})};
+      TARGET_HOURS_BY_CITY={...DEFAULT_TARGET_HOURS_BY_CITY,...(saved.targetHoursByCity||{})};
+    }
+  }catch(e){console.warn("No se pudo cargar configuración guardada",e);}
+}
+function normalizeLegacyConfig(obj,type){
+  const out={};
+  Object.entries(obj||{}).forEach(([k,v])=>{
+    if(type==="map"){
+      const areas=String(v||"").split("|").map(x=>x.trim()).filter(Boolean).flatMap(a=>a==="Cargue Descargue"?["Cargue","Descargue"]:[a]);
+      out[k]=areas.length?areas.join("|"):"Sin clasificar";
+    }else{
+      if(k==="Cargue Descargue"){
+        const half=(Number(v)||0)/2;
+        out["Cargue"]=(out["Cargue"]||0)+half;
+        out["Descargue"]=(out["Descargue"]||0)+half;
+      }else out[k]=v;
+    }
+  });
+  return out;
+}
+loadConfigFromStorage();
+
+
+const PALETTE=["#2563eb","#10b981","#f97316","#8b5cf6","#ec4899","#06b6d4","#facc15","#ef4444","#14b8a6","#6366f1","#84cc16","#f43f5e","#0ea5e9","#a855f7","#22c55e","#fb923c"];
+const PLAN_COLOR="#8b5cf6";
+const REAL_COLOR="#10b981";
+const WARN_COLOR="#f97316";
+const BAD_COLOR="#ef4444";
+
+let equipmentIntervals=[];  // una fila por equipo e intervalo, sin dividir horas
+let areaRows=[];            // una fila por equipo-área e intervalo, con horas divididas
+let currentEquipment=[];
+let currentAreaRows=[];
+let currentMix=[];
+let charts=[];
+let lastEquipSummary=[];
+let lastAreaEquipSummary=[];
+let lastDaySummary=[];
+let lastAlerts=[];
+let lastLoadedAOA=null;
+let lastLoadedSourceName="";
+
+const GOOGLE_SPREADSHEET_ID="1_2Y1zvQ5v1K-yscoiTsHt5GKe55RpuRpXRp8lVFxzuo";
+const GOOGLE_SHEET_NAME="Registros";
+let googleSheetScript=null;
+let googleSheetTimeout=null;
+
+const $=id=>document.getElementById(id);
+const fmt1=n=>(Number(n)||0).toLocaleString("es-CO",{minimumFractionDigits:1,maximumFractionDigits:1});
+const fmt0=n=>(Number(n)||0).toLocaleString("es-CO",{maximumFractionDigits:0});
+const fmt2=n=>(Number(n)||0).toLocaleString("es-CO",{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct=n=>(Number.isFinite(n)?n:0).toLocaleString("es-CO",{minimumFractionDigits:0,maximumFractionDigits:0})+"%";
+const pct1=n=>(Number.isFinite(n)?n:0).toLocaleString("es-CO",{minimumFractionDigits:1,maximumFractionDigits:1})+"%";
+const pp=n=>`${n>0?"+":""}${(Number(n)||0).toLocaleString("es-CO",{minimumFractionDigits:1,maximumFractionDigits:1})} pp`;
+
+function showError(msg){const e=$("err");e.textContent=msg;e.style.display=msg?"block":"none";}
+function localDate(y,m,d){return new Date(Number(y),Number(m)-1,Number(d));}
+function pad2(n){return String(n).padStart(2,"0");}
+function toISO(date){return `${date.getFullYear()}-${pad2(date.getMonth()+1)}-${pad2(date.getDate())}`;}
+function toLabel(date){return `${pad2(date.getDate())}/${pad2(date.getMonth()+1)}/${date.getFullYear()}`;}
+function daysBetween(a,b){return Math.max(1,Math.round((b-a)/(24*60*60*1000)));}
+function naturalSort(a,b){return String(a).localeCompare(String(b),"es",{numeric:true,sensitivity:"base"});}
+function sum(arr,key){return arr.reduce((a,x)=>a+(Number(x[key])||0),0);}
+function groupBy(arr,keyFn){const m=new Map();arr.forEach(x=>{const k=keyFn(x);if(!m.has(k))m.set(k,[]);m.get(k).push(x);});return m;}
+
+function parseNumber(value){
+  if(value===null||value===undefined||value==="")return NaN;
+  if(typeof value==="number")return value;
+  let s=String(value).trim().replace(/\s/g,"");
+  if(!s)return NaN;
+  s=s.replace(/[^0-9,.-]/g,"");
+  const lastComma=s.lastIndexOf(",");
+  const lastDot=s.lastIndexOf(".");
+  if(lastComma>-1&&lastDot>-1){
+    if(lastComma>lastDot){s=s.replace(/\./g,"").replace(",",".");}
+    else{s=s.replace(/,/g,"");}
+  }else if(lastComma>-1){s=s.replace(",",".");}
+  const n=Number(s);
+  return Number.isFinite(n)?n:NaN;
+}
+
+function parseHeaderDate(value){
+  if(value===null||value===undefined||value==="")return null;
+  if(typeof value==="number"&&window.XLSX){const d=XLSX.SSF.parse_date_code(value);if(d)return localDate(d.y,d.m,d.d);}
+  if(value instanceof Date&&!isNaN(value))return localDate(value.getFullYear(),value.getMonth()+1,value.getDate());
+  let s=String(value).trim();
+  let m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if(m){let yy=Number(m[3]);if(yy<100)yy+=2000;return localDate(yy,m[2],m[1]);}
+  m=s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/);
+  if(m)return localDate(m[1],m[2],m[3]);
+  const d=new Date(s);if(!isNaN(d))return localDate(d.getFullYear(),d.getMonth()+1,d.getDate());
+  return null;
+}
+
+function parseAreasForEquipment(equipo){
+  const raw=AREA_BY_EQUIPMENT[equipo];
+  if(!raw)return ["Sin clasificar"];
+  if(Array.isArray(raw))return raw.map(x=>String(x).trim()).filter(Boolean);
+  return String(raw).split("|").map(x=>x.trim()).filter(Boolean).length?String(raw).split("|").map(x=>x.trim()).filter(Boolean):["Sin clasificar"];
+}
+function normalizeCityName(city){
+  const s=String(city||"").trim().toLowerCase();
+  if(s.includes("barranca"))return "Barrancabermeja";
+  if(s.includes("san gil")||s==="sangil")return "San Gil";
+  return "Bucaramanga";
+}
+function cityForEquipment(equipo){return normalizeCityName(CITY_BY_EQUIPMENT[equipo]||"Bucaramanga");}
+function cityUsesAreas(city){return normalizeCityName(city)===AREA_ENABLED_CITY;}
+function allConfiguredCities(){
+  return [...new Set([AREA_ENABLED_CITY,"Barrancabermeja","San Gil"].concat(Object.values(CITY_BY_EQUIPMENT).map(normalizeCityName)))].sort(naturalSort);
+}
+function cityTargetDay(city){
+  const c=normalizeCityName(city);
+  if(cityUsesAreas(c))return allConfiguredAreas().reduce((a,area)=>a+areaTargetDay(area),0);
+  return parseNumber(TARGET_HOURS_BY_CITY[c])||0;
+}
+function equipmentCountForCity(city){
+  const c=normalizeCityName(city);
+  return Object.keys(CITY_BY_EQUIPMENT).filter(eq=>cityForEquipment(eq)===c).length||1;
+}
+
+function allConfiguredAreas(){
+  return [...new Set(Object.keys(TARGET_HOURS_BY_AREA).concat(Object.values(AREA_BY_EQUIPMENT).flatMap(v=>Array.isArray(v)?v:String(v).split("|")).map(x=>String(x).trim()).filter(Boolean)))].sort(naturalSort);
+}
+function colorFor(label){const all=allConfiguredAreas();const idx=Math.max(0,all.indexOf(label));return PALETTE[idx%PALETTE.length];}
+function areaTargetDay(area){return parseNumber(TARGET_HOURS_BY_AREA[area])||0;}
+function equipmentCountForArea(area){return Object.keys(AREA_BY_EQUIPMENT).filter(eq=>parseAreasForEquipment(eq).includes(area)).length||1;}
+function baseTargetDayForEquipment(equipo){
+  const max=parseNumber($("maxHoursDay").value)||24;
+  const city=cityForEquipment(equipo);
+  if(Object.prototype.hasOwnProperty.call(TARGET_HOURS_BY_EQUIPMENT,equipo)){
+    const raw=parseNumber(TARGET_HOURS_BY_EQUIPMENT[equipo])||0;
+    return {raw,value:Math.min(raw,max),source:"manual"};
+  }
+  if(!cityUsesAreas(city)){
+    const raw=cityTargetDay(city)/equipmentCountForCity(city);
+    return {raw,value:Math.min(raw,max),source:"ciudad"};
+  }
+  const raw=parseAreasForEquipment(equipo).reduce((acc,area)=>acc+(areaTargetDay(area)/equipmentCountForArea(area)),0);
+  return {raw,value:Math.min(raw,max),source:"áreas"};
+}
+
+function normalizeAOA(aoa){return aoa.filter(row=>row&&row.some(c=>String(c??"").trim()!==""));}
+function findHeaderRow(aoa){const idx=aoa.findIndex(row=>String(row?.[0]??"").trim().toLowerCase()==="equipo");return idx>=0?idx:0;}
+
+function loadAOA(aoa,sourceName="Datos cargados"){
+  lastLoadedAOA=clonePlain(aoa);lastLoadedSourceName=sourceName;
+  showError("");equipmentIntervals=[];areaRows=[];currentEquipment=[];currentAreaRows=[];currentMix=[];
+  const rows=normalizeAOA(aoa);
+  if(rows.length<2){showError("No se encontraron filas suficientes. Verifica encabezados y equipos.");return;}
+  const headerIdx=findHeaderRow(rows);
+  const header=rows[headerIdx];
+  const validDateIndexes=[];
+  header.slice(1).forEach((h,i)=>{if(parseHeaderDate(h))validDateIndexes.push(i+1);});
+  if(!validDateIndexes.length){showError("No pude reconocer fechas en los encabezados. Usa dd/mm/aaaa o fechas reales de Excel.");return;}
+
+  const unknownEquipments=new Set();
+  const parseWarnings=[];
+  let equipmentCount=0;
+
+  for(let i=headerIdx+1;i<rows.length;i++){
+    const row=rows[i];
+    const equipo=String(row[0]??"").trim();
+    if(!equipo)continue;
+    equipmentCount++;
+    const city=cityForEquipment(equipo);
+    const hasAreaAnalysis=cityUsesAreas(city);
+    const areas=hasAreaAnalysis?parseAreasForEquipment(equipo):[];
+    const areaText=hasAreaAnalysis?areas.join(" | "):"Sin análisis por área";
+    if(hasAreaAnalysis&&areas.includes("Sin clasificar"))unknownEquipments.add(equipo);
+    const readings=[];
+    validDateIndexes.forEach(colIdx=>{
+      const date=parseHeaderDate(header[colIdx]);
+      const value=parseNumber(row[colIdx]);
+      if(date&&Number.isFinite(value))readings.push({date,iso:toISO(date),label:toLabel(date),value});
+      else if(row[colIdx]!==undefined&&row[colIdx]!==null&&String(row[colIdx]).trim()!=="")parseWarnings.push(`Equipo ${equipo}, columna ${colIdx+1}: valor no numérico`);
+    });
+    readings.sort((a,b)=>a.date-b.date);
+    for(let r=1;r<readings.length;r++){
+      const prev=readings[r-1],cur=readings[r];
+      const rawDelta=cur.value-prev.value;
+      const negative=rawDelta<0;
+      const intervalDays=daysBetween(prev.date,cur.date);
+      const totalHours=negative?0:rawDelta;
+      const hDiaEquipo=totalHours/intervalDays;
+      const targetInfo=baseTargetDayForEquipment(equipo);
+      const targetEquipo=targetInfo.value*intervalDays;
+      const complianceEquipo=targetEquipo>0?totalHours/targetEquipo*100:null;
+      const alerts=[];
+      if(negative)alerts.push("Horómetro disminuyó");
+      if(hasAreaAnalysis&&areas.includes("Sin clasificar"))alerts.push("Equipo sin área asignada en Bucaramanga");
+      if(targetInfo.raw>(parseNumber($("maxHoursDay").value)||24))alerts.push(`Objetivo equipo proyectado > ${parseNumber($("maxHoursDay").value)||24} h/día; se limita`);
+      if(hDiaEquipo>(parseNumber($("maxHoursDay").value)||24))alerts.push(`Equipo supera ${parseNumber($("maxHoursDay").value)||24} h/día`);
+      const eqRow={equipo,city,hasAreaAnalysis,areas,areaText,areaCount:areas.length,fromDate:prev.date,fromISO:prev.iso,fromLabel:prev.label,toDate:cur.date,toISO:cur.iso,toLabel:cur.label,intervalDays,lecturaInicial:prev.value,lecturaFinal:cur.value,rawDelta,totalHours,hDiaEquipo,targetDayEquipo:targetInfo.value,targetDayEquipoRaw:targetInfo.raw,targetEquipo,complianceEquipo,alerts};
+      equipmentIntervals.push(eqRow);
+      if(hasAreaAnalysis){
+        const share=1/areas.length;
+        areas.forEach(area=>{
+          areaRows.push({...eqRow,area,share,hoursArea:totalHours*share,hDiaArea:hDiaEquipo*share,targetAreaDay:areaTargetDay(area),targetArea:areaTargetDay(area)*intervalDays});
+        });
+      }
+    }
+  }
+
+  if(!equipmentIntervals.length){showError("No hay suficientes lecturas consecutivas por equipo para calcular diferencias.");return;}
+  setupDateRange();
+  buildFilterLists();
+  renderConfigTables();
+  populateContrastDates();
+  applySearchFilters();
+  render();
+  const unknownText=unknownEquipments.size?` | ${unknownEquipments.size} equipo(s) de Bucaramanga sin clasificar`:"";
+  const warningText=parseWarnings.length?` | ${parseWarnings.length} valor(es) omitidos`:"";
+  const multiAreaCount=new Set(equipmentIntervals.filter(x=>x.areaCount>1).map(x=>x.equipo)).size;
+  const cityText=[...new Set(equipmentIntervals.map(x=>x.city))].sort(naturalSort).join(", ");
+  $("status").innerHTML=`<strong>${sourceName}</strong><br>${equipmentCount} equipos, ${equipmentIntervals.length} intervalos. Ciudades: ${escapeHtml(cityText)}. ${multiAreaCount} equipo(s) multiárea en Bucaramanga${unknownText}${warningText}.`;
+}
+
+function loadWorkbook(wb,sourceName){const preferred=wb.SheetNames.find(s=>s.toLowerCase().includes("hor"))||wb.SheetNames[0];const aoa=XLSX.utils.sheet_to_json(wb.Sheets[preferred],{header:1,raw:true,defval:""});loadAOA(aoa,`${sourceName} / hoja: ${preferred}`);}
+
+function gvizToAOA(response){
+  if(!response || response.status!=="ok" || !response.table){
+    const reason=response?.errors?.map(e=>e.detailed_message||e.message).filter(Boolean).join(" | ") || "Respuesta inválida de Google Sheets";
+    throw new Error(reason);
+  }
+
+  const rows=(response.table.rows||[]).map(row=>{
+    const cells=row.c||[];
+    return cells.map(cell=>{
+      if(!cell)return "";
+      if(cell.f!==undefined && cell.f!==null && cell.f!=="")return cell.f;
+      if(cell.v===undefined || cell.v===null)return "";
+      return cell.v;
+    });
+  });
+
+  if(!rows.length)throw new Error("Google Sheets no devolvió filas.");
+
+  // En GViz, la primera fila de esta hoja contiene las fechas y A1 llega vacía.
+  // El dashboard necesita que la primera celda sea exactamente EQUIPO.
+  rows[0][0]="EQUIPO";
+
+  // Recorta las cientos de columnas vacías que Google puede incluir por formato residual.
+  let lastUsedColumn=0;
+  rows.forEach(row=>row.forEach((value,index)=>{
+    if(value!==null && value!==undefined && String(value).trim()!=="")lastUsedColumn=Math.max(lastUsedColumn,index);
+  }));
+
+  const trimmed=rows.map(row=>{
+    const out=row.slice(0,lastUsedColumn+1);
+    while(out.length<lastUsedColumn+1)out.push("");
+    return out;
+  });
+
+  if(String(trimmed[0]?.[0]||"").trim().toUpperCase()!=="EQUIPO")throw new Error("No se pudo construir el encabezado EQUIPO.");
+  if(trimmed[0].length<2)throw new Error("No se encontraron columnas de fechas.");
+  return trimmed;
+}
+
+function gvizSingleCell(range){
+  return new Promise((resolve,reject)=>{
+    const callbackName="__gvizCell_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+    let script=null;
+    let timer=null;
+    const cleanup=()=>{
+      if(timer){clearTimeout(timer);timer=null;}
+      if(script){script.remove();script=null;}
+      try{delete window[callbackName];}catch(_){window[callbackName]=undefined;}
+    };
+    window[callbackName]=response=>{
+      try{
+        if(!response || response.status!=="ok" || !response.table)throw new Error("Respuesta GViz inválida para "+range);
+        const cell=response.table.rows?.[0]?.c?.[0]||null;
+        const value=cell?(cell.f!==undefined&&cell.f!==null&&cell.f!==""?cell.f:cell.v):"";
+        cleanup();
+        resolve(value===undefined||value===null?"":String(value).trim());
+      }catch(err){cleanup();reject(err);}
+    };
+    const params=new URLSearchParams({
+      sheet:GOOGLE_SHEET_NAME,
+      range,
+      tqx:`responseHandler:${callbackName}`,
+      _t:String(Date.now())
+    });
+    script=document.createElement("script");
+    script.src=`https://docs.google.com/spreadsheets/d/${GOOGLE_SPREADSHEET_ID}/gviz/tq?${params.toString()}`;
+    script.async=true;
+    script.onerror=()=>{cleanup();reject(new Error("No se pudo consultar "+range));};
+    document.head.appendChild(script);
+    timer=setTimeout(()=>{cleanup();reject(new Error("Tiempo agotado consultando "+range));},10000);
+  });
+}
+
+async function recoverMissingEquipmentIds(aoa){
+  const missing=[];
+  for(let i=1;i<aoa.length;i++){
+    const equipo=String(aoa[i]?.[0]??"").trim();
+    const hasReadings=(aoa[i]||[]).slice(1).some(v=>v!==null&&v!==undefined&&String(v).trim()!=="");
+    if(!equipo && hasReadings)missing.push(i);
+  }
+  if(!missing.length)return {aoa,recovered:0,failed:[]};
+
+  const failed=[];
+  let recovered=0;
+  await Promise.all(missing.map(async i=>{
+    const sheetRow=i+1; // aoa[0] corresponde a la fila 1 de la hoja
+    try{
+      const id=await gvizSingleCell(`A${sheetRow}:A${sheetRow}`);
+      if(id){aoa[i][0]=id;recovered++;}
+      else failed.push(sheetRow);
+    }catch(_){failed.push(sheetRow);}
+  }));
+  return {aoa,recovered,failed};
+}
+
+function loadGoogleSheet(){
+  const btn=$("btnGoogleRefresh");
+  const gs=$("googleStatus");
+  const callbackName="__horometrosGvizCallback";
+
+  try{
+    if(btn){btn.disabled=true;btn.textContent="Actualizando…";}
+    if(gs)gs.textContent="Conectando con Google Sheets…";
+    showError("");
+
+    if(googleSheetTimeout){clearTimeout(googleSheetTimeout);googleSheetTimeout=null;}
+    if(googleSheetScript){googleSheetScript.remove();googleSheetScript=null;}
+    try{delete window[callbackName];}catch(_){window[callbackName]=undefined;}
+
+    window[callbackName]=async function(response){
+      try{
+        const aoa=gvizToAOA(response);
+        if(gs)gs.textContent="Datos recibidos. Recuperando identificadores alfanuméricos…";
+        const recovery=await recoverMissingEquipmentIds(aoa);
+        loadAOA(recovery.aoa,"Google Sheets · Registros");
+        const stamp=new Date().toLocaleString("es-CO",{dateStyle:"short",timeStyle:"medium"});
+        const extra=recovery.recovered?`<br>${recovery.recovered} identificador(es) alfanumérico(s) recuperado(s)`:"";
+        const warn=recovery.failed.length?`<br><span style="color:#fbbf24">No se pudieron recuperar ${recovery.failed.length} fila(s): ${recovery.failed.join(", ")}</span>`:"";
+        if(gs)gs.innerHTML=`<strong>Google Sheets conectado</strong><br>${recovery.aoa.length-1} equipos · ${recovery.aoa[0].length-1} fechas${extra}${warn}<br>Última actualización: ${escapeHtml(stamp)}`;
+      }catch(error){
+        if(gs)gs.innerHTML=`<strong>No se pudo procesar Google Sheets.</strong><br>La conexión respondió, pero los datos no tienen el formato esperado.`;
+        showError("Error procesando Google Sheets: "+error.message);
+      }finally{
+        if(googleSheetTimeout){clearTimeout(googleSheetTimeout);googleSheetTimeout=null;}
+        if(googleSheetScript){googleSheetScript.remove();googleSheetScript=null;}
+        try{delete window[callbackName];}catch(_){window[callbackName]=undefined;}
+        if(btn){btn.disabled=false;btn.textContent="Actualizar Google Sheets";}
+      }
+    };
+
+    const params=new URLSearchParams({
+      sheet:GOOGLE_SHEET_NAME,
+      tqx:`responseHandler:${callbackName}`,
+      _t:String(Date.now())
+    });
+    googleSheetScript=document.createElement("script");
+    googleSheetScript.src=`https://docs.google.com/spreadsheets/d/${GOOGLE_SPREADSHEET_ID}/gviz/tq?${params.toString()}`;
+    googleSheetScript.async=true;
+    googleSheetScript.onerror=function(){
+      if(googleSheetTimeout){clearTimeout(googleSheetTimeout);googleSheetTimeout=null;}
+      if(gs)gs.innerHTML=`<strong>No se pudo cargar Google Sheets.</strong><br>No fue posible cargar el endpoint GViz.`;
+      showError("No se pudo cargar Google Sheets mediante GViz/JSONP. Verifica conexión a Internet y permisos de la hoja.");
+      if(googleSheetScript){googleSheetScript.remove();googleSheetScript=null;}
+      try{delete window[callbackName];}catch(_){window[callbackName]=undefined;}
+      if(btn){btn.disabled=false;btn.textContent="Actualizar Google Sheets";}
+    };
+    document.head.appendChild(googleSheetScript);
+
+    googleSheetTimeout=setTimeout(()=>{
+      if(gs)gs.innerHTML=`<strong>Tiempo de espera agotado.</strong><br>Google Sheets no respondió dentro de 15 segundos.`;
+      showError("Tiempo de espera agotado al consultar Google Sheets mediante GViz.");
+      if(googleSheetScript){googleSheetScript.remove();googleSheetScript=null;}
+      try{delete window[callbackName];}catch(_){window[callbackName]=undefined;}
+      if(btn){btn.disabled=false;btn.textContent="Actualizar Google Sheets";}
+    },15000);
+  }catch(error){
+    if(gs)gs.innerHTML=`<strong>No se pudo iniciar la carga de Google Sheets.</strong>`;
+    showError("Error iniciando Google Sheets: "+error.message);
+    if(btn){btn.disabled=false;btn.textContent="Actualizar Google Sheets";}
+  }
+}
+
+function setupDateRange(){const dates=[...new Set(equipmentIntervals.map(x=>x.toISO))].sort();$("d1").min=dates[0];$("d1").max=dates[dates.length-1];$("d2").min=dates[0];$("d2").max=dates[dates.length-1];$("d1").value=dates[0];$("d2").value=dates[dates.length-1];}
+function populateContrastDates(){const dates=[...new Set(equipmentIntervals.map(x=>x.toISO))].sort();const labels=Object.fromEntries(equipmentIntervals.map(x=>[x.toISO,x.toLabel]));$("contrastDate").innerHTML=`<option value="all">Acumulado del filtro</option>`+dates.map(d=>`<option value="${d}">${labels[d]}</option>`).join("");$("contrastDate").value=dates[dates.length-1]||"all";}
+function countBy(arr,key){return arr.reduce((acc,x)=>{acc[x[key]]=(acc[x[key]]||0)+1;return acc;},{});}
+
+function saveConfigToStorage(){
+  try{localStorage.setItem(CONFIG_STORAGE_KEY,JSON.stringify({areaByEquipment:AREA_BY_EQUIPMENT,targetHoursByArea:TARGET_HOURS_BY_AREA,targetHoursByEquipment:TARGET_HOURS_BY_EQUIPMENT,cityByEquipment:CITY_BY_EQUIPMENT,targetHoursByCity:TARGET_HOURS_BY_CITY}));}
+  catch(e){console.warn("No se pudo guardar configuración",e);}
+}
+function splitAreasText(text){return String(text||"").split("|").map(x=>x.trim()).filter(Boolean);}
+function cssEscapeSafe(value){return window.CSS&&CSS.escape?CSS.escape(value):String(value).replace(/[^a-zA-Z0-9_-]/g,"\$&");}
+function renderConfigTables(){
+  if(!$('cfgAreaBody')||!$('cfgEquipBody'))return;
+  const cities=allConfiguredCities();
+  if($('cfgCityTargetBody')){
+    $('cfgCityTargetBody').innerHTML=cities.filter(c=>!cityUsesAreas(c)).map(city=>`<tr data-city-target="${escapeAttr(city)}"><td><strong>${escapeHtml(city)}</strong></td><td><input class="cfg-city-target" type="number" step="0.1" min="0" value="${Number(cityTargetDay(city)||0)}"></td></tr>`).join("")||emptyRow(2);
+  }
+  const loadedEquipos=[...new Set(equipmentIntervals.map(x=>x.equipo))];
+  const equipos=[...new Set(Object.keys(AREA_BY_EQUIPMENT).concat(Object.keys(CITY_BY_EQUIPMENT)).concat(loadedEquipos))].sort(naturalSort);
+  if($('cfgCityEquipBody')){
+    $('cfgCityEquipBody').innerHTML=equipos.map(eq=>{const city=cityForEquipment(eq);return `<tr data-city-equipo="${escapeAttr(eq)}"><td><strong>${escapeHtml(eq)}</strong></td><td><select class="cfg-equip-city"><option ${city==="Bucaramanga"?"selected":""}>Bucaramanga</option><option ${city==="Barrancabermeja"?"selected":""}>Barrancabermeja</option><option ${city==="San Gil"?"selected":""}>San Gil</option></select></td><td>${cityUsesAreas(city)?badge("Por áreas","info"):badge("Total horas","mix")}</td></tr>`;}).join("");
+  }
+  const areas=allConfiguredAreas();
+  $('cfgAreaBody').innerHTML=areas.map(area=>`<tr data-old-area="${escapeAttr(area)}"><td><input class="cfg-area-name" value="${escapeAttr(area)}" ${area==="Sin clasificar"?"readonly title='Área fija para equipos no asignados'":""}></td><td><input class="cfg-area-target" type="number" step="0.1" min="0" value="${Number(areaTargetDay(area)||0)}"></td><td>${area==="Sin clasificar"?badge("Fija","info"):`<button class="small danger" type="button" data-delete-area="${escapeAttr(area)}">Quitar</button>`}</td></tr>`).join("");
+  const bucEquipos=equipos.filter(eq=>cityUsesAreas(cityForEquipment(eq)));
+  $('cfgEquipBody').innerHTML=bucEquipos.map(eq=>{const areas=parseAreasForEquipment(eq);return `<tr data-equipo="${escapeAttr(eq)}"><td><strong>${escapeHtml(eq)}</strong></td><td><textarea class="cfg-equip-areas" placeholder="Área 1 | Área 2">${escapeHtml(areas.join(" | "))}</textarea></td><td>${areas.length}</td></tr>`;}).join("")||`<tr><td colspan="3" style="text-align:center;color:#64748b;padding:26px">No hay equipos de Bucaramanga en la configuración actual.</td></tr>`;
+}
+function saveConfigFromEditor(){
+  const renameMap={};
+  const newTargets={};
+  document.querySelectorAll('#cfgAreaBody tr').forEach(row=>{
+    const oldName=row.dataset.oldArea||"";
+    const input=row.querySelector('.cfg-area-name');
+    const target=row.querySelector('.cfg-area-target');
+    const newName=(input?.value||"").trim();
+    if(!newName)return;
+    if(oldName&&oldName!==newName)renameMap[oldName]=newName;
+    newTargets[newName]=Math.max(0,parseNumber(target?.value)||0);
+  });
+  if(!Object.prototype.hasOwnProperty.call(newTargets,"Sin clasificar"))newTargets["Sin clasificar"]=0;
+
+  const newCityTargets={...TARGET_HOURS_BY_CITY};
+  document.querySelectorAll('#cfgCityTargetBody tr').forEach(row=>{
+    const city=normalizeCityName(row.dataset.cityTarget||"");
+    const target=row.querySelector('.cfg-city-target');
+    if(city&&!cityUsesAreas(city))newCityTargets[city]=Math.max(0,parseNumber(target?.value)||0);
+  });
+
+  const newCityMap={...CITY_BY_EQUIPMENT};
+  document.querySelectorAll('#cfgCityEquipBody tr').forEach(row=>{
+    const eq=row.dataset.cityEquipo;
+    const city=normalizeCityName(row.querySelector('.cfg-equip-city')?.value);
+    if(eq)newCityMap[eq]=city;
+  });
+
+  const newMap={...AREA_BY_EQUIPMENT};
+  document.querySelectorAll('#cfgEquipBody tr[data-equipo]').forEach(row=>{
+    const eq=row.dataset.equipo;
+    let areas=splitAreasText(row.querySelector('.cfg-equip-areas')?.value).flatMap(a=>renameMap[a]?[renameMap[a]]:[a]);
+    areas=[...new Set(areas.map(a=>a.trim()).filter(Boolean))];
+    if(!areas.length)areas=["Sin clasificar"];
+    newMap[eq]=areas.join("|");
+    areas.forEach(a=>{if(!Object.prototype.hasOwnProperty.call(newTargets,a))newTargets[a]=0;});
+  });
+  AREA_BY_EQUIPMENT=newMap;
+  TARGET_HOURS_BY_AREA=newTargets;
+  CITY_BY_EQUIPMENT=newCityMap;
+  TARGET_HOURS_BY_CITY=newCityTargets;
+  saveConfigToStorage();
+  rerunAfterConfigChange("Configuración guardada");
+}
+function rerunAfterConfigChange(message){
+  renderConfigTables();
+  if(lastLoadedAOA){loadAOA(lastLoadedAOA,lastLoadedSourceName+" / "+message);}else{buildFilterLists();render();$('status').innerHTML=`<strong>${escapeHtml(message)}</strong><br>La configuración quedó guardada en este navegador.`;}
+}
+function addAreaFromEditor(){
+  const name=($('newAreaName')?.value||"").trim();
+  if(!name){showError("Escribe el nombre de la nueva área.");return;}
+  TARGET_HOURS_BY_AREA[name]=Math.max(0,parseNumber($('newAreaTarget')?.value)||0);
+  if($('newAreaName'))$('newAreaName').value="";
+  if($('newAreaTarget'))$('newAreaTarget').value="0";
+  saveConfigToStorage();
+  renderConfigTables();showError("");
+}
+function removeAreaFromEditor(area){
+  if(!area||area==="Sin clasificar")return;
+  document.querySelectorAll('#cfgEquipBody .cfg-equip-areas').forEach(txt=>{
+    const kept=splitAreasText(txt.value).filter(a=>a!==area);
+    txt.value=kept.join(" | ");
+  });
+  const row=document.querySelector(`#cfgAreaBody tr[data-old-area="${cssEscapeSafe(area)}"]`);
+  if(row)row.remove();
+}
+function resetConfigEditor(){
+  AREA_BY_EQUIPMENT=clonePlain(DEFAULT_AREA_BY_EQUIPMENT);
+  TARGET_HOURS_BY_AREA=clonePlain(DEFAULT_TARGET_HOURS_BY_AREA);
+  TARGET_HOURS_BY_EQUIPMENT=clonePlain(DEFAULT_TARGET_HOURS_BY_EQUIPMENT);
+  CITY_BY_EQUIPMENT=clonePlain(DEFAULT_CITY_BY_EQUIPMENT);
+  TARGET_HOURS_BY_CITY=clonePlain(DEFAULT_TARGET_HOURS_BY_CITY);
+  saveConfigToStorage();
+  rerunAfterConfigChange("Configuración restaurada");
+}
+function exportConfig(){
+  const rows=[];
+  allConfiguredCities().forEach(city=>rows.push({tipo:"Ciudad",item:city,valor:cityUsesAreas(city)?"Usa áreas":cityTargetDay(city),detalle:cityUsesAreas(city)?"Bucaramanga: proyección por áreas":"Horas proyectadas/día ciudad"}));
+  allConfiguredAreas().forEach(area=>rows.push({tipo:"Área",item:area,valor:areaTargetDay(area),detalle:"Horas proyectadas/día; solo Bucaramanga"}));
+  Object.keys(CITY_BY_EQUIPMENT).sort(naturalSort).forEach(eq=>rows.push({tipo:"Equipo-Ciudad",item:eq,valor:cityForEquipment(eq),detalle:cityUsesAreas(cityForEquipment(eq))?"Usa áreas":"Sin áreas"}));
+  Object.keys(AREA_BY_EQUIPMENT).sort(naturalSort).forEach(eq=>rows.push({tipo:"Equipo-Área",item:eq,valor:AREA_BY_EQUIPMENT[eq],detalle:"Áreas separadas por |; solo aplica si la ciudad es Bucaramanga"}));
+  exportCSV("configuracion_ciudades_areas_equipos.csv",rows,[{header:"Tipo",value:"tipo"},{header:"Item",value:"item"},{header:"Valor",value:"valor"},{header:"Detalle",value:"detalle"}]);
+}
+
+function buildFilterLists(){
+  const cityCounts=countBy(equipmentIntervals,"city");
+  const areaCounts=countBy(areaRows,"area");
+  const equipCounts=countBy(equipmentIntervals,"equipo");
+  buildChecklist("cityList",Object.keys(cityCounts).sort(naturalSort),cityCounts,"city",false);
+  buildChecklist("areaList",Object.keys(areaCounts).sort(naturalSort),areaCounts,"area",true);
+  buildChecklist("equipList",Object.keys(equipCounts).sort(naturalSort),equipCounts,"equip",false);
+  updateFilterCounts();
+}
+function buildChecklist(containerId,values,counts,prefix,withDots){$(containerId).innerHTML=values.map(v=>`<label class="checkitem" data-text="${escapeAttr(v).toLowerCase()}"><input type="checkbox" data-filter="${prefix}" value="${escapeAttr(v)}" checked>${withDots?`<span class="color-dot" style="background:${colorFor(v)}"></span>`:""}<span>${escapeHtml(v)}</span><small>${counts[v]}</small></label>`).join("");}
+function getChecked(prefix){return [...document.querySelectorAll(`input[data-filter="${prefix}"]:checked`)].map(x=>x.value);}
+function setChecked(prefix,checked,onlyVisible=false){document.querySelectorAll(`input[data-filter="${prefix}"]`).forEach(x=>{if(!onlyVisible||x.closest(".checkitem").style.display!=="none")x.checked=checked;});updateFilterCounts();render();}
+function updateFilterCounts(){
+  const cc=getChecked("city").length,ct=document.querySelectorAll('input[data-filter="city"]').length;
+  const ac=getChecked("area").length,at=document.querySelectorAll('input[data-filter="area"]').length;
+  const ec=getChecked("equip").length,et=document.querySelectorAll('input[data-filter="equip"]').length;
+  if($("cityCount"))$("cityCount").textContent=`${cc}/${ct}`;
+  $("areaCount").textContent=`${ac}/${at}`;$("equipCount").textContent=`${ec}/${et}`;
+}
+function applySearchFilters(){filterChecklist("cityList",$("citySearch")?.value||"");filterChecklist("areaList",$("areaSearch").value);filterChecklist("equipList",$("equipSearch").value);}
+function filterChecklist(containerId,term){const box=$(containerId);if(!box)return;const t=String(term||"").trim().toLowerCase();[...box.querySelectorAll(".checkitem")].forEach(item=>{item.style.display=item.dataset.text.includes(t)?"flex":"none";});}
+function selectedDateRangeOk(x){const a=$("d1").value,b=$("d2").value;if(a&&x.toISO<a)return false;if(b&&x.toISO>b)return false;return true;}
+function passStateFilterEq(row){const state=$("stateFilter").value;const idle=parseNumber($("idleThreshold").value)||0;if(state==="active")return row.totalHours>idle;if(state==="idle")return row.totalHours<=idle;if(state==="under")return row.complianceEquipo!==null&&row.complianceEquipo<80;if(state==="over")return row.complianceEquipo!==null&&row.complianceEquipo>120;if(state==="alerts")return row.alerts.length>0;return true;}
+function filterEquipmentRows(){
+  const cities=getChecked("city"),areas=getChecked("area"),equipos=getChecked("equip");
+  return equipmentIntervals.filter(x=>
+    cities.includes(x.city)&&
+    equipos.includes(x.equipo)&&
+    (!cityUsesAreas(x.city)||x.areas.some(a=>areas.includes(a)))&&
+    selectedDateRangeOk(x)&&passStateFilterEq(x)
+  );
+}
+function filterAreaRows(equipmentRows){const rowKeys=new Set(equipmentRows.filter(x=>cityUsesAreas(x.city)).map(x=>`${x.equipo}|${x.toISO}|${x.fromISO}`));const areas=getChecked("area");return areaRows.filter(x=>rowKeys.has(`${x.equipo}|${x.toISO}|${x.fromISO}`)&&areas.includes(x.area));}
+
+function uniqueAreaDateTarget(rows){
+  const keys=new Map();
+  rows.forEach(r=>{const key=`${r.area}|${r.toISO}`;if(!keys.has(key))keys.set(key,{area:r.area,toISO:r.toISO,toLabel:r.toLabel,intervalDays:r.intervalDays,target:areaTargetDay(r.area)*r.intervalDays});});
+  return [...keys.values()];
+}
+function totalPlannedForRows(rows){return sum(uniqueAreaDateTarget(rows),"target");}
+function totalPlannedHybrid(eqRows,arRows){
+  const areaPart=totalPlannedForRows(arRows);
+  const nonAreaPart=sum(eqRows.filter(x=>!cityUsesAreas(x.city)),"targetEquipo");
+  return areaPart+nonAreaPart;
+}
+
+function summarizeEquipment(rows){
+  const g=groupBy(rows,x=>x.equipo);
+  return [...g.entries()].map(([equipo,items])=>{
+    const ordered=[...items].sort((a,b)=>a.fromDate-b.fromDate);
+    const hours=sum(items,"totalHours"),target=sum(items,"targetEquipo"),days=sum(items,"intervalDays");
+    const compliance=target>0?hours/target*100:null;
+    const alerts=[...new Set(items.flatMap(x=>x.alerts))];
+    const city=items[0].city;
+    const areas=cityUsesAreas(city)?items[0].areaText:"Sin áreas";
+    return {equipo,city,areas,areaCount:items[0].areaCount,desde:ordered[0].fromLabel,hasta:ordered[ordered.length-1].toLabel,lecturaInicial:ordered[0].lecturaInicial,lecturaFinal:ordered[ordered.length-1].lecturaFinal,horas:hours,dias:days,hDia:days?hours/days:0,targetDay:days?target/days:0,target,compliance,estado:getStatus(hours,compliance,alerts.length),alerts};
+  }).sort((a,b)=>b.horas-a.horas);
+}
+function summarizeAreaEquip(rows){
+  const g=groupBy(rows,x=>`${x.equipo}|${x.area}`);
+  return [...g.entries()].map(([key,items])=>{
+    const [equipo,area]=key.split("|");
+    const hours=sum(items,"hoursArea"),days=sum(items,"intervalDays"),target=sum(items,"targetArea");
+    return {equipo,area,share:items[0].share,areaCount:items[0].areaCount,horas:hours,dias:days,hDia:days?hours/days:0,targetAreaDay:items[0].targetAreaDay,target,compliance:target>0?hours/target*100:null};
+  }).sort((a,b)=>b.horas-a.horas);
+}
+function summarizeDay(eqRows,arRows){
+  const g=groupBy(eqRows,x=>x.toISO);
+  return [...g.entries()].map(([iso,items])=>{
+    const ar=arRows.filter(x=>x.toISO===iso);
+    const hours=sum(items,"totalHours");
+    const target=totalPlannedHybrid(items,ar);
+    const activeEquip=new Set(items.filter(x=>x.totalHours>0).map(x=>x.equipo)).size;
+    const topArea=Object.entries(ar.reduce((acc,x)=>{acc[x.area]=(acc[x.area]||0)+x.hoursArea;return acc;},{})).sort((a,b)=>b[1]-a[1])[0];
+    const topEquip=Object.entries(items.reduce((acc,x)=>{acc[x.equipo]=(acc[x.equipo]||0)+x.totalHours;return acc;},{})).sort((a,b)=>b[1]-a[1])[0];
+    return {iso,fecha:items[0].toLabel,horas:hours,target,compliance:target>0?hours/target*100:null,areas:new Set(ar.map(x=>x.area)).size,equipos:new Set(items.map(x=>x.equipo)).size,ciudades:new Set(items.map(x=>x.city)).size,activos:activeEquip,topArea:topArea?`${topArea[0]} (${fmt1(topArea[1])} h)`:topEquip?`${topEquip[0]} (${fmt1(topEquip[1])} h)`:"-"};
+  }).sort((a,b)=>a.iso.localeCompare(b.iso));
+}
+function summarizeArea(rows){
+  const g=groupBy(rows,x=>x.area);
+  const targetMap=groupBy(uniqueAreaDateTarget(rows),x=>x.area);
+  return [...g.entries()].map(([area,items])=>{
+    const hours=sum(items,"hoursArea");
+    const target=sum(targetMap.get(area)||[],"target");
+    return {area,hours,target,compliance:target>0?hours/target*100:null,equipos:new Set(items.map(x=>x.equipo)).size,targetDay:areaTargetDay(area)};
+  }).sort((a,b)=>b.hours-a.hours);
+}
+function getStatus(hours,compliance,alertCount){const idle=parseNumber($("idleThreshold").value)||0;if(alertCount>0)return{txt:"Alerta",cls:"bad"};if(hours<=idle)return{txt:"Detenido",cls:"bad"};if(compliance!==null&&compliance<80)return{txt:"Bajo",cls:"warn"};if(compliance!==null&&compliance>120)return{txt:"Sobre",cls:"warn"};return{txt:"OK",cls:"good"};}
+
+function buildMixRows(arRows){
+  let rows=arRows;
+  const contrast=$("contrastDate").value;
+  if(contrast!=="all")rows=rows.filter(x=>x.toISO===contrast);
+  const selectedAreas=getChecked("area");
+  const dates=[...new Set(rows.map(x=>x.toISO))];
+  const intervalByDate=new Map();
+  rows.forEach(r=>{if(!intervalByDate.has(r.toISO))intervalByDate.set(r.toISO,r.intervalDays);});
+  const actualByArea={};
+  rows.forEach(r=>{actualByArea[r.area]=(actualByArea[r.area]||0)+r.hoursArea;});
+  const plannedByArea={};
+  selectedAreas.forEach(area=>{
+    let planned=0;
+    dates.forEach(d=>{planned+=areaTargetDay(area)*(intervalByDate.get(d)||1);});
+    if(planned>0||actualByArea[area])plannedByArea[area]=planned;
+  });
+  Object.keys(actualByArea).forEach(a=>{if(!(a in plannedByArea))plannedByArea[a]=0;});
+  const totalActual=Object.values(actualByArea).reduce((a,b)=>a+b,0);
+  const totalPlanned=Object.values(plannedByArea).reduce((a,b)=>a+b,0);
+  return Object.keys(plannedByArea).sort(naturalSort).map(area=>{
+    const actual=actualByArea[area]||0;
+    const planned=plannedByArea[area]||0;
+    const realPct=totalActual>0?actual/totalActual*100:0;
+    const plannedPct=totalPlanned>0?planned/totalPlanned*100:0;
+    return {area,planned,actual,plannedPct,realPct,diff:realPct-plannedPct,absDiff:Math.abs(realPct-plannedPct)};
+  }).sort((a,b)=>b.absDiff-a.absDiff);
+}
+
+function latestCityHours(city){
+  const c=normalizeCityName(city);
+  const rows=equipmentIntervals.filter(x=>x.city===c);
+  if(!rows.length)return {hours:0,fromLabel:"-",toLabel:"-",equipment:0};
+  const latestISO=rows.reduce((m,x)=>!m||x.toISO>m?x.toISO:m,"");
+  const latestRows=rows.filter(x=>x.toISO===latestISO);
+  const hours=sum(latestRows,"totalHours");
+  const fromDates=[...new Set(latestRows.map(x=>x.fromLabel))];
+  const toLabel=latestRows[0]?.toLabel||"-";
+  const fromLabel=fromDates.length===1?fromDates[0]:"lectura previa por equipo";
+  return {hours,fromLabel,toLabel,equipment:new Set(latestRows.map(x=>x.equipo)).size};
+}
+
+function renderGlobalCityHours(){
+  const defs=[
+    ["Bucaramanga","cityHoursBuc","cityHoursBucHelp"],
+    ["Barrancabermeja","cityHoursBarr","cityHoursBarrHelp"],
+    ["San Gil","cityHoursSan","cityHoursSanHelp"]
+  ];
+  defs.forEach(([city,valueId,helpId])=>{
+    const r=latestCityHours(city);
+    if($(valueId))$(valueId).textContent=`${fmt1(r.hours)} h`;
+    if($(helpId))$(helpId).textContent=r.toLabel==="-"?"Sin lecturas suficientes":`${r.fromLabel} → ${r.toLabel} · ${fmt0(r.equipment)} equipo(s)`;
+  });
+}
+
+function render(){
+  currentEquipment=filterEquipmentRows();
+  currentAreaRows=filterAreaRows(currentEquipment);
+  currentMix=buildMixRows(currentAreaRows);
+  lastEquipSummary=summarizeEquipment(currentEquipment);
+  lastAreaEquipSummary=summarizeAreaEquip(currentAreaRows);
+  lastDaySummary=summarizeDay(currentEquipment,currentAreaRows);
+  const areaSummary=summarizeArea(currentAreaRows);
+  lastAlerts=currentEquipment.filter(x=>x.alerts.length);
+  const hasData=equipmentIntervals.length>0;
+  $("empty").style.display=hasData?"none":"block";$("dashboard").style.display=hasData?"block":"none";
+  updateFilterCounts();
+  if(!hasData)return;
+  renderGlobalCityHours();
+
+  const areaMode=currentEquipment.some(x=>cityUsesAreas(x.city));
+  updateModeVisibility(areaMode);
+  const totalHours=sum(currentEquipment,"totalHours");
+  const target=totalPlannedHybrid(currentEquipment,currentAreaRows);
+  const comp=target>0?totalHours/target*100:0;
+  const uniqueEquip=new Set(currentEquipment.map(x=>x.equipo));
+  const activeEquip=new Set(currentEquipment.filter(x=>x.totalHours>(parseNumber($("idleThreshold").value)||0)).map(x=>x.equipo));
+  const idleEquip=uniqueEquip.size-activeEquip.size;
+  const avgDev=currentMix.length?currentMix.reduce((a,x)=>a+x.absDiff,0)/currentMix.length:0;
+  const topArea=areaSummary[0];
+  const topEq=lastEquipSummary[0];
+  const selectedCities=[...new Set(currentEquipment.map(x=>x.city))].sort(naturalSort);
+
+  $("kHours").textContent=fmt1(totalHours);
+  $("kTarget").textContent=fmt1(target);
+  $("kTargetTitle").textContent=areaMode?"Objetivo área/ciudad":"Objetivo ciudad/equipo";
+  $("kTargetHelp").textContent=areaMode?"Bucaramanga por área; otras ciudades por total":"Sin análisis por áreas";
+  $("kCompliance").textContent=pct(comp);
+  $("kCompliance").className="kpi-value "+(comp>=90&&comp<=110?"kpi-good":comp<80||comp>130?"kpi-bad":"kpi-warn");
+  $("kComplianceHelp").textContent=`${fmt1(totalHours)} h / ${fmt1(target)} h`;
+  if(areaMode){
+    $("kMixDev").textContent=pp(avgDev).replace("+","");
+    $("kMixDev").className="kpi-value "+(avgDev<=5?"kpi-good":avgDev<=12?"kpi-warn":"kpi-bad");
+    $("kTopTitle").textContent="Top área real";
+    $("kTopArea").textContent=topArea?topArea.area:"-";$("kTopAreaHelp").textContent=topArea?`${fmt1(topArea.hours)} h · ${pct1(topArea.hours/(totalHours||1)*100)}`:"Sin datos";
+  }else{
+    $("kMixDev").textContent="N/A";$("kMixDev").className="kpi-value";
+    $("kTopTitle").textContent="Top equipo real";
+    $("kTopArea").textContent=topEq?topEq.equipo:"-";$("kTopAreaHelp").textContent=topEq?`${fmt1(topEq.horas)} h · ${escapeHtml(topEq.city)}`:"Sin datos";
+  }
+  $("kActive").textContent=fmt0(activeEquip.size);$("kActiveHelp").textContent=`de ${fmt0(uniqueEquip.size)} equipos filtrados`;
+  $("kIdle").textContent=fmt0(Math.max(0,idleEquip));
+  $("kAlerts").textContent=fmt0(lastAlerts.length);$("kAlerts").className="kpi-value "+(lastAlerts.length?"kpi-bad":"kpi-good");
+
+  const dateText=($("d1").value||"inicio")+" a "+($("d2").value||"fin");
+  const contrastText=$("contrastDate").value==="all"?"acumulado del filtro":($("contrastDate").selectedOptions[0]?.textContent||"día seleccionado");
+  $("subtitle").textContent=`Filtro actual: ${selectedCities.join(", ")||"sin ciudad"}. Fechas: ${dateText}. ${fmt0(currentEquipment.length)} intervalos de equipo.`;
+  $("mixExplanation").innerHTML=areaMode?`Modo mixto: <strong>Bucaramanga</strong> usa áreas y mix porcentual. <strong>Barrancabermeja/San Gil</strong> no usan áreas y solo se comparan horas reales vs proyectadas.`:`Modo sin áreas: para <strong>${escapeHtml(selectedCities.join(", "))}</strong> se ocultan las vistas de áreas y solo se validan horas reales contra horas proyectadas.`;
+
+  renderTables(lastDaySummary,areaSummary,areaMode);
+  renderHeatmap(currentEquipment);
+  renderCharts(lastDaySummary,areaSummary,lastEquipSummary,currentMix,areaMode);
+}
+function updateModeVisibility(areaMode){
+  const selectedCities=getChecked("city").map(normalizeCityName);
+  const selectedOnlyNoArea=selectedCities.length>0&&!selectedCities.includes(AREA_ENABLED_CITY);
+  const showAreaControls=!selectedOnlyNoArea;
+  ["areaFilterWrap","contrastWrap","chartMixBox","chartAreaBox","chartDeviationBox"].forEach(id=>{const el=$(id);if(el)el.classList.toggle("is-hidden",!areaMode&&id.startsWith("chart")||!showAreaControls&&(id==="areaFilterWrap"||id==="contrastWrap"));});
+  document.querySelectorAll('[data-tab="tabMix"],[data-tab="tabAreaEquip"]').forEach(x=>x.classList.toggle("is-hidden",!areaMode));
+  ["tabMix","tabAreaEquip"].forEach(id=>{const el=$(id);if(el)el.classList.toggle("is-hidden",!areaMode);});
+  if(!areaMode&&document.querySelector('.tab.active')?.classList.contains('is-hidden')){
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(x=>x.classList.remove("active"));
+    document.querySelector('[data-tab="tabEquip"]')?.classList.add("active");
+    $("tabEquip")?.classList.add("active");
+  }
+}
+
+function renderTables(daySummary,areaSummary,areaMode){
+  $("thMix").innerHTML=`<tr><th>Área</th><th>Obj. área h</th><th>Real h</th><th>% proyectado</th><th>% real</th><th>Diferencia</th><th>Visual</th></tr>`;
+  $("tbMix").innerHTML=currentMix.map(r=>`<tr><td><span class="color-dot" style="background:${colorFor(r.area)}"></span> <strong>${escapeHtml(r.area)}</strong></td><td class="num">${fmt1(r.planned)}</td><td class="num">${fmt1(r.actual)}</td><td class="num">${pct1(r.plannedPct)}</td><td class="num">${pct1(r.realPct)}</td><td class="num ${diffClass(r.diff)}">${pp(r.diff)}</td><td>${miniBars(r.plannedPct,r.realPct)}</td></tr>`).join("")||emptyRow(7);
+
+  $("thEquip").innerHTML=`<tr><th>Equipo</th><th>Ciudad</th><th>Área(s) / modo</th><th>Desde</th><th>Hasta</th><th>Lectura inicial</th><th>Lectura final</th><th>Horas equipo</th><th>Días</th><th>h/día equipo</th><th>Obj. eq/día</th><th>Objetivo eq</th><th>Cumpl.</th><th>Estado</th><th>Alertas</th></tr>`;
+  $("tbEquip").innerHTML=lastEquipSummary.map(r=>`<tr><td><strong>${escapeHtml(r.equipo)}</strong></td><td>${escapeHtml(r.city)}</td><td>${cityUsesAreas(r.city)?escapeHtml(r.areas):badge("Total horas","mix")} ${r.areaCount>1?badge(`÷${r.areaCount} áreas`,`mix`):""}</td><td>${r.desde}</td><td>${r.hasta}</td><td class="num">${fmt1(r.lecturaInicial)}</td><td class="num">${fmt1(r.lecturaFinal)}</td><td class="num"><strong>${fmt1(r.horas)}</strong></td><td class="num">${fmt0(r.dias)}</td><td class="num">${fmt1(r.hDia)}</td><td class="num">${fmt1(r.targetDay)}</td><td class="num">${fmt1(r.target)}</td><td class="num">${r.compliance===null?"-":pct(r.compliance)}</td><td>${badge(r.estado.txt,r.estado.cls)}</td><td>${escapeHtml(r.alerts.join(" | ")||"-")}</td></tr>`).join("")||emptyRow(15);
+
+  $("thAreaEquip").innerHTML=`<tr><th>Equipo</th><th>Área asignada</th><th>Factor reparto</th><th>Horas área</th><th>Días</th><th>h/día área</th><th>Obj. área/día</th><th>Objetivo área</th><th>Cumpl. área</th></tr>`;
+  $("tbAreaEquip").innerHTML=lastAreaEquipSummary.map(r=>`<tr><td><strong>${escapeHtml(r.equipo)}</strong></td><td><span class="color-dot" style="background:${colorFor(r.area)}"></span> ${escapeHtml(r.area)}</td><td class="num">${pct1(r.share*100)}</td><td class="num"><strong>${fmt1(r.horas)}</strong></td><td class="num">${fmt0(r.dias)}</td><td class="num">${fmt1(r.hDia)}</td><td class="num">${fmt1(r.targetAreaDay)}</td><td class="num">${fmt1(r.target)}</td><td class="num">${r.compliance===null?"-":pct(r.compliance)}</td></tr>`).join("")||emptyRow(9);
+
+  $("thDay").innerHTML=`<tr><th>Fecha lectura</th><th>Horas reales</th><th>Objetivo</th><th>Cumpl.</th><th>Ciudades</th><th>${areaMode?"Áreas":"Áreas"}</th><th>Equipos</th><th>Equipos activos</th><th>Top real</th></tr>`;
+  $("tbDay").innerHTML=daySummary.map(r=>`<tr><td><strong>${r.fecha}</strong></td><td class="num">${fmt1(r.horas)}</td><td class="num">${fmt1(r.target)}</td><td class="num">${r.compliance===null?"-":pct(r.compliance)}</td><td class="num">${r.ciudades}</td><td class="num">${r.areas}</td><td class="num">${r.equipos}</td><td class="num">${r.activos}</td><td>${escapeHtml(r.topArea)}</td></tr>`).join("")||emptyRow(9);
+
+  $("thDetail").innerHTML=`<tr><th>Equipo</th><th>Ciudad</th><th>Área(s) / modo</th><th>Desde</th><th>Hasta</th><th>Días</th><th>Lectura inicial</th><th>Lectura final</th><th>Delta crudo</th><th>Horas equipo</th><th>h/día equipo</th><th>Obj. eq/día</th><th>Cumpl. eq</th><th>Alertas</th></tr>`;
+  $("tbDetail").innerHTML=currentEquipment.map(r=>`<tr><td><strong>${escapeHtml(r.equipo)}</strong></td><td>${escapeHtml(r.city)}</td><td>${cityUsesAreas(r.city)?escapeHtml(r.areaText):badge("Total horas","mix")} ${r.areaCount>1?badge(`reparto 1/${r.areaCount}`,`mix`):""}</td><td>${r.fromLabel}</td><td>${r.toLabel}</td><td class="num">${r.intervalDays}</td><td class="num">${fmt1(r.lecturaInicial)}</td><td class="num">${fmt1(r.lecturaFinal)}</td><td class="num">${fmt1(r.rawDelta)}</td><td class="num"><strong>${fmt1(r.totalHours)}</strong></td><td class="num">${fmt1(r.hDiaEquipo)}</td><td class="num">${fmt1(r.targetDayEquipo)}</td><td class="num">${r.complianceEquipo===null?"-":pct(r.complianceEquipo)}</td><td>${escapeHtml(r.alerts.join(" | ")||"-")}</td></tr>`).join("")||emptyRow(14);
+
+  $("thAlerts").innerHTML=`<tr><th>Equipo</th><th>Ciudad</th><th>Área(s) / modo</th><th>Intervalo</th><th>Lectura inicial</th><th>Lectura final</th><th>Delta</th><th>h/día equipo</th><th>Alerta</th></tr>`;
+  $("tbAlerts").innerHTML=lastAlerts.map(r=>`<tr><td><strong>${escapeHtml(r.equipo)}</strong></td><td>${escapeHtml(r.city)}</td><td>${cityUsesAreas(r.city)?escapeHtml(r.areaText):"Total horas"}</td><td>${r.fromLabel} → ${r.toLabel}</td><td class="num">${fmt1(r.lecturaInicial)}</td><td class="num">${fmt1(r.lecturaFinal)}</td><td class="num">${fmt1(r.rawDelta)}</td><td class="num">${fmt1(r.hDiaEquipo)}</td><td>${escapeHtml(r.alerts.join(" | "))}</td></tr>`).join("")||`<tr><td colspan="9" style="text-align:center;color:#64748b;padding:26px">No hay alertas con el filtro actual.</td></tr>`;
+}
+
+function renderHeatmap(rows){
+  const dates=[...new Set(rows.map(x=>x.toISO))].sort();
+  const labels=Object.fromEntries(rows.map(x=>[x.toISO,x.toLabel]));
+  const equips=[...new Set(rows.map(x=>x.equipo))].sort(naturalSort);
+  const map={};rows.forEach(x=>{map[x.equipo+"|"+x.toISO]=(map[x.equipo+"|"+x.toISO]||0)+x.hDiaEquipo;});
+  $("thHeat").innerHTML=`<tr><th>Equipo</th><th>Ciudad</th><th>Área(s) / modo</th>${dates.map(d=>`<th>${labels[d]}</th>`).join("")}</tr>`;
+  const maxDay=parseNumber($("maxHoursDay").value)||24;
+  $("tbHeat").innerHTML=equips.map(eq=>{const sample=rows.find(x=>x.equipo===eq)||{};return `<tr><td><strong>${escapeHtml(eq)}</strong></td><td>${escapeHtml(sample.city||"-")}</td><td>${sample.city&&cityUsesAreas(sample.city)?escapeHtml(sample.areaText||"-"):"Total horas"}</td>${dates.map(d=>{const v=map[eq+"|"+d]||0;return `<td class="${heatClass(v,maxDay)}">${v?fmt1(v):"0"}</td>`;}).join("")}</tr>`;}).join("")||emptyRow(dates.length+3);
+}
+function heatClass(v,maxDay){if(v<=0)return"heat-zero";if(v>maxDay)return"heat-alert";if(v<4)return"heat-low";if(v<10)return"heat-mid";return"heat-high";}
+function diffClass(v){if(Math.abs(v)<1)return"diff-neutral";return v>0?"diff-pos":"diff-neg";}
+function miniBars(plan,real){const p=Math.max(2,Math.min(100,plan));const r=Math.max(2,Math.min(100,real));return `<div style="font-size:10px;color:#64748b;margin-bottom:3px">Plan / Real</div><div class="mini-bars"><div class="bar bar-plan" style="width:${p}px"></div><div class="bar bar-real" style="width:${r}px"></div></div>`;}
+
+function renderCharts(daySummary,areaSummary,equipSummary,mixRows,areaMode){
+  charts.forEach(c=>c.destroy());charts=[];
+  if(areaMode){
+    charts.push(new Chart($("cMix"),{type:"bar",data:{labels:mixRows.map(x=>x.area),datasets:[{label:"% proyectado",data:mixRows.map(x=>x.plannedPct),backgroundColor:PLAN_COLOR,borderRadius:8},{label:"% real",data:mixRows.map(x=>x.realPct),backgroundColor:REAL_COLOR,borderRadius:8}]},options:{...baseOptions("Mix porcentual por área: proyectado vs real"),scales:{y:{beginAtZero:true,ticks:{callback:v=>v+"%"}},x:{ticks:{maxRotation:45,minRotation:15}}},plugins:{...baseOptions("Mix porcentual por área: proyectado vs real").plugins,tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${pct1(ctx.raw)}`}}}}}));
+    charts.push(new Chart($("cArea"),{type:"bar",data:{labels:areaSummary.map(x=>x.area),datasets:[{label:"Horas reales",data:areaSummary.map(x=>x.hours),backgroundColor:areaSummary.map(x=>colorFor(x.area)),borderRadius:8},{label:"Objetivo",data:areaSummary.map(x=>x.target),backgroundColor:"rgba(139,92,246,.35)",borderColor:PLAN_COLOR,borderWidth:2,borderRadius:8}]},options:{...baseOptions("Horas vs objetivo por área de Bucaramanga"),scales:{x:{ticks:{maxRotation:60,minRotation:25}},y:{beginAtZero:true}}}}));
+    charts.push(new Chart($("cDeviation"),{type:"bar",data:{labels:mixRows.map(x=>x.area),datasets:[{label:"Diferencia real - proyectado (pp)",data:mixRows.map(x=>x.diff),backgroundColor:mixRows.map(x=>x.diff>=0?"#10b981":"#ef4444"),borderRadius:8}]},options:{...baseOptions("Desviación de participación por área"),indexAxis:"y",scales:{x:{ticks:{callback:v=>v+" pp"}}},plugins:{...baseOptions("Desviación de participación por área").plugins,tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${pp(ctx.raw)}`}}}}}));
+  }
+  charts.push(new Chart($("cDaily"),{data:{labels:daySummary.map(x=>x.fecha),datasets:[{type:"bar",label:"Horas reales",data:daySummary.map(x=>x.horas),backgroundColor:REAL_COLOR,borderRadius:8},{type:"line",label:"Objetivo",data:daySummary.map(x=>x.target),borderColor:PLAN_COLOR,backgroundColor:PLAN_COLOR,tension:.28,borderWidth:3,pointRadius:4}]},options:baseOptions("Horas reales vs objetivo por fecha")}));
+  const top=equipSummary.slice(0,12);
+  charts.push(new Chart($("cEquip"),{type:"bar",data:{labels:top.map(x=>`${x.equipo} · ${x.city}`),datasets:[{label:"Horas equipo",data:top.map(x=>x.horas),backgroundColor:top.map((_,i)=>PALETTE[i%PALETTE.length]),borderRadius:8}]},options:{...baseOptions("Top equipos por horas reales"),indexAxis:"y",scales:{x:{beginAtZero:true}}}}));
+}
+function baseOptions(title){return{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:title,font:{size:15,weight:"bold"},color:"#0f172a"},legend:{position:"bottom",labels:{usePointStyle:true,boxWidth:9}},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label||"Valor"}: ${fmt1(ctx.raw)}`}}},scales:{y:{beginAtZero:true,grid:{color:"rgba(148,163,184,.25)"}},x:{grid:{display:false}}}};}
+function badge(text,cls){return `<span class="badge ${cls}">${escapeHtml(text)}</span>`;}
+function emptyRow(cols){return `<tr><td colspan="${cols}" style="text-align:center;color:#64748b;padding:26px">Sin datos con el filtro actual.</td></tr>`;}
+function escapeHtml(v){return String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));}
+function escapeAttr(v){return escapeHtml(v).replace(/`/g,"&#96;");}
+function exportCSV(filename,rows,columns){const sep=";";const csv=[columns.map(c=>c.header).join(sep)].concat(rows.map(r=>columns.map(c=>csvCell(typeof c.value==="function"?c.value(r):r[c.value])).join(sep))).join("\n");const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);}
+function csvCell(v){const s=String(v??"");return /[;"\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;}
+
+$("btnGoogleRefresh").addEventListener("click",loadGoogleSheet);
+
+$("file").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=ev=>{try{const data=new Uint8Array(ev.target.result);const wb=XLSX.read(data,{type:"array",cellDates:false});loadWorkbook(wb,f.name);if($("googleStatus"))$("googleStatus").innerHTML="<strong>Fuente temporal:</strong> archivo local de respaldo.";}catch(error){showError("No pude leer el archivo. Verifica que sea Excel/CSV válido. "+error.message);}};reader.readAsArrayBuffer(f);});
+
+$("btnClear").addEventListener("click",()=>{equipmentIntervals=[];areaRows=[];currentEquipment=[];currentAreaRows=[];currentMix=[];lastEquipSummary=[];lastAreaEquipSummary=[];lastDaySummary=[];lastAlerts=[];lastLoadedAOA=null;lastLoadedSourceName="";charts.forEach(c=>c.destroy());charts=[];$("file").value="";if($("cityList"))$("cityList").innerHTML="";$("areaList").innerHTML="";$("equipList").innerHTML="";$("contrastDate").innerHTML='<option value="all">Acumulado del filtro</option>';$("status").textContent="Sin datos cargados.";if($("googleStatus"))$("googleStatus").textContent="Datos limpiados. Pulsa Actualizar Google Sheets para recargar.";showError("");render();renderConfigTables();});
+["d1","d2","stateFilter","idleThreshold","maxHoursDay","contrastDate"].forEach(id=>$(id).addEventListener("input",render));
+["citySearch","areaSearch","equipSearch"].forEach(id=>$(id)?.addEventListener("input",applySearchFilters));
+$("cityList").addEventListener("change",()=>{updateFilterCounts();render();});$("areaList").addEventListener("change",()=>{updateFilterCounts();render();});$("equipList").addEventListener("change",()=>{updateFilterCounts();render();});
+document.querySelectorAll("button[data-list]").forEach(btn=>btn.addEventListener("click",()=>{const prefix=btn.dataset.list==="areas"?"area":btn.dataset.list==="cities"?"city":"equip";setChecked(prefix,btn.dataset.action==="all",true);}));
+$("btnAllDates").addEventListener("click",()=>{if(!equipmentIntervals.length)return;const dates=[...new Set(equipmentIntervals.map(x=>x.toISO))].sort();$("d1").value=dates[0];$("d2").value=dates[dates.length-1];$("contrastDate").value="all";render();});
+$("btnLastDate").addEventListener("click",()=>{if(!equipmentIntervals.length)return;const dates=[...new Set(equipmentIntervals.map(x=>x.toISO))].sort();const last=dates[dates.length-1];$("d1").value=last;$("d2").value=last;$("contrastDate").value=last;render();});
+$("btnOnlyActive").addEventListener("click",()=>{$("stateFilter").value="active";render();});
+$("btnOnlyAlerts").addEventListener("click",()=>{$("stateFilter").value="alerts";render();});
+document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".tab-panel").forEach(x=>x.classList.remove("active"));btn.classList.add("active");$(btn.dataset.tab).classList.add("active");}));
+$("btnSaveConfig").addEventListener("click",saveConfigFromEditor);
+$("btnResetConfig").addEventListener("click",resetConfigEditor);
+$("btnExportConfig").addEventListener("click",exportConfig);
+$("btnAddArea").addEventListener("click",addAreaFromEditor);
+$("cfgAreaBody").addEventListener("click",e=>{const btn=e.target.closest("button[data-delete-area]");if(btn)removeAreaFromEditor(btn.dataset.deleteArea);});
+
+renderConfigTables();
+loadGoogleSheet();
+</script>
+</body>
+</html>
